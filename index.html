@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lost2Found Kenya | Nationwide Lost & Found Platform</title>
+    
+    <!-- SEO & Metadata -->
+    <meta name="description" content="Kenya's nationwide Lost and Found platform. Search, report, and recover lost phones, IDs, certificates, documents, and keys across all 47 counties.">
+    <meta name="keywords" content="lost phone Kenya, found phone Kenya, lost ID Kenya, found ID Kenya, lost documents Kenya, lost items Nairobi, found items Nairobi, lost and found Kenya">
+    <meta name="theme-color" content="#008751">
+    
+    <!-- Open Graph SEO -->
+    <meta property="og:title" content="Lost2Found Kenya - Recover Lost Items Fast">
+    <meta property="og:description" content="Report or find lost IDs, phones, documents, wallets, and bags across all 47 Kenyan counties. Safe, private, and instant matching.">
+    <meta property="og:type" content="website">
+
+    <!-- External Web Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/854/854878.png">
+
+    <!-- Tailwind CSS CDN & Lucide Icons -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        kenya: {
+                            green: '#008751',
+                            red: '#E31B23',
+                            black: '#000000',
+                            gold: '#FFC72C'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; }
+    </style>
+</head>
+<body class="h-full flex flex-col text-slate-800 font-sans antialiased pb-20 md:pb-0">
+
+    <!-- Header / Navbar -->
+    <header class="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <!-- Brand Logo -->
+            <div onclick="nav('home')" class="flex items-center gap-2 cursor-pointer select-none">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-kenya-green to-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-md shadow-emerald-200">
+                    L2F
+                </div>
+                <div>
+                    <span class="text-xl font-extrabold tracking-tight text-slate-900">Lost2<span class="text-kenya-green">Found</span></span>
+                    <span class="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest -mt-1">Kenya Platform</span>
+                </div>
+            </div>
+
+            <!-- Desktop Navigation -->
+            <nav class="hidden md:flex items-center gap-6 text-sm font-medium">
+                <button onclick="nav('home')" class="hover:text-kenya-green transition">Home</button>
+                <button onclick="nav('search')" class="hover:text-kenya-green transition">Browse Items</button>
+                <button onclick="nav('matches')" class="hover:text-kenya-green transition flex items-center gap-1.5">
+                    <span>Matches</span>
+                    <span id="match-badge-desktop" class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold hidden">0</span>
+                </button>
+                <button onclick="nav('how')" class="hover:text-kenya-green transition">How It Works</button>
+                <button onclick="nav('admin')" class="text-slate-400 hover:text-slate-600 transition">Admin Panel</button>
+            </nav>
+
+            <!-- Actions -->
+            <div class="flex items-center gap-2">
+                <button onclick="openReportModal('lost')" class="bg-kenya-red hover:bg-red-700 text-white text-xs md:text-sm font-semibold px-3 py-2 rounded-lg shadow-sm transition">
+                    + Report Lost
+                </button>
+                <button onclick="openReportModal('found')" class="bg-kenya-green hover:bg-emerald-700 text-white text-xs md:text-sm font-semibold px-3 py-2 rounded-lg shadow-sm transition">
+                    + Report Found
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main id="main-content" class="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
+        <!-- Dynamic Views injected here by JS -->
+    </main>
+
+    <!-- Bottom Mobile Navigation Bar -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-4 py-2 flex justify-around items-center text-slate-600">
+        <button onclick="nav('home')" class="flex flex-col items-center gap-1 text-[11px] font-medium hover:text-kenya-green">
+            <i data-lucide="home" class="w-5 h-5"></i>
+            Home
+        </button>
+        <button onclick="nav('search')" class="flex flex-col items-center gap-1 text-[11px] font-medium hover:text-kenya-green">
+            <i data-lucide="search" class="w-5 h-5"></i>
+            Search
+        </button>
+        <button onclick="nav('matches')" class="flex flex-col items-center gap-1 text-[11px] font-medium hover:text-kenya-green relative">
+            <i data-lucide="sparkles" class="w-5 h-5"></i>
+            Matches
+            <span id="match-badge-mobile" class="absolute top-0 right-2 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+        </button>
+        <button onclick="nav('admin')" class="flex flex-col items-center gap-1 text-[11px] font-medium hover:text-kenya-green">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+            Admin
+        </button>
+    </nav>
+
+    <!-- Report Modal (Lost or Found) -->
+    <div id="report-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end md:items-center justify-center hidden">
+        <div class="bg-white w-full max-w-lg rounded-t-2xl md:rounded-2xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+            <button onclick="closeReportModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <h2 id="modal-title" class="text-xl font-bold mb-4">Report an Item</h2>
+            <form id="report-form" onsubmit="handleReportSubmit(event)" class="space-y-4">
+                <input type="hidden" id="form-type" value="lost">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Item Title / Name *</label>
+                    <input type="text" id="form-title" required placeholder="e.g. National ID Card, Samsung A14, Black Leather Wallet" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Category *</label>
+                        <select id="form-category" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                            <option value="Phones & Tablets">Phones & Tablets</option>
+                            <option value="National IDs & Passports">IDs & Passports</option>
+                            <option value="Certificates & Documents">Certificates & Documents</option>
+                            <option value="Wallets & Bags">Wallets & Bags</option>
+                            <option value="Keys & Remotes">Keys & Remotes</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Pets & Animals">Pets & Animals</option>
+                            <option value="Others">Others</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">County *</label>
+                        <select id="form-county" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Specific Area/Town *</label>
+                        <input type="text" id="form-location" required placeholder="e.g. Westlands, CBD Matatu Stage" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">Date *</label>
+                        <input type="date" id="form-date" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Description & Distinguishing Features</label>
+                    <textarea id="form-desc" rows="3" placeholder="Provide details (e.g. cracked screen top right, initial 'K.M.' written on corner). DO NOT put full ID numbers publicly." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Item Photo (Optional)</label>
+                    <input type="file" id="form-photo" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-kenya-green hover:file:bg-emerald-100">
+                </div>
+
+                <div id="reward-field" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Optional Finder's Reward (KES)</label>
+                    <input type="number" id="form-reward" placeholder="e.g. 1000" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Your Contact Phone / WhatsApp *</label>
+                    <input type="tel" id="form-contact" required placeholder="e.g. 0712345678" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                    <p class="text-[10px] text-slate-400 mt-1">🔒 Kept private. Only shown when you approve a match claim.</p>
+                </div>
+
+                <button type="submit" class="w-full bg-kenya-green hover:bg-emerald-700 text-white font-bold py-3 rounded-lg text-sm shadow-md transition">
+                    Submit Report & Check Matches
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Claim & Verification Modal -->
+    <div id="claim-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-end md:items-center justify-center hidden">
+        <div class="bg-white w-full max-w-md rounded-t-2xl md:rounded-2xl p-6 shadow-2xl relative">
+            <button onclick="closeClaimModal()" class="absolute top-4 right-4 text-slate-400 p-1">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+            <h2 class="text-lg font-bold text-slate-900 mb-1">Verify Ownership Claim</h2>
+            <p class="text-xs text-slate-500 mb-4">To prevent fraud, verify specific private details before contact details are exchanged.</p>
+            
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-800 flex gap-2">
+                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0"></i>
+                <div>
+                    <strong>Safety First:</strong> Never pay any money, transport fees, or M-Pesa release fees upfront before physically seeing your item. Meet in a secure public place like a police station or supermarket.
+                </div>
+            </div>
+
+            <form onsubmit="handleClaimSubmit(event)" class="space-y-3">
+                <input type="hidden" id="claim-item-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Your Full Name</label>
+                    <input type="text" id="claim-name" required class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Provide Private Verification Detail</label>
+                    <textarea id="claim-proof" required rows="2" placeholder="Describe something NOT visible in photos (e.g. last 3 digits of ID number, wallpaper photo, unique sticker on back)." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">Your Phone Number</label>
+                    <input type="tel" id="claim-phone" required placeholder="07xxxxxxxx" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-kenya-green focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-lg text-sm shadow transition">
+                    Submit Ownership Claim
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Application Engine Script -->
+    <script>
+        // Service Worker Registration for PWA compliance
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').then((reg) => {
+                    console.log('ServiceWorker registered successfully:', reg.scope);
+                }).catch((err) => {
+                    console.log('ServiceWorker registration failed:', err);
+                });
+            });
+        }
+
+        const COUNTIES = [
+            "Nairobi", "Mombasa", "Kisumu", "Nakuru", "Kiambu", "Uasin Gishu", "Machakos", "Kajiado",
+            "Meru", "Nyeri", "Kakamega", "Kilifi", "Bungoma", "Garissa", "Embu", "Kericho", "Kisii",
+            "Laikipia", "Murang'a", "Trans Nzoia", "Baringo", "Bomet", "Busia", "Elgeyo Marakwet", 
+            "Homa Bay", "Isiolo", "Kwale", "Lamu", "Makueni", "Mandera", "Marsabit", "Migori", 
+            "Nandi", "Narok", "Nyamira", "Nyandarua", "Samburu", "Siaya", "Taita Taveta", "Tana River", 
+            "Tharaka Nithi", "Turkana", "Vihiga", "Wajir", "West Pokot"
+        ];
+
+        const SAMPLE_ITEMS = [
+            {
+                id: '101',
+                type: 'lost',
+                title: 'National Identity Card (John Omwamba)',
+                category: 'National IDs & Passports',
+                county: 'Nairobi',
+                location: 'CBD, Near Archives',
+                date: '2026-03-28',
+                description: 'Lost ID card in a clear plastic sleeve. Name: John Omwamba. Serial starting with 28***.',
+                status: 'active',
+                reward: 500,
+                contact: '0712***000',
+                photo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=60'
+            },
+            {
+                id: '102',
+                type: 'found',
+                title: 'National Identity Card (John Omwamba)',
+                category: 'National IDs & Passports',
+                county: 'Nairobi',
+                location: 'Tom Mboya Street',
+                date: '2026-03-28',
+                description: 'Picked up ID card belonging to John Omwamba outside Supermarket.',
+                status: 'active',
+                reward: 0,
+                contact: '0722***111',
+                photo: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&auto=format&fit=crop&q=60'
+            },
+            {
+                id: '103',
+                type: 'lost',
+                title: 'Samsung Galaxy A24 (Black)',
+                category: 'Phones & Tablets',
+                county: 'Mombasa',
+                location: 'Nyali Beach area',
+                date: '2026-03-25',
+                description: 'Black phone with cracked glass screen protector and a blue back cover.',
+                status: 'active',
+                reward: 2000,
+                contact: '0733***222',
+                photo: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&auto=format&fit=crop&q=60'
+            },
+            {
+                id: '104',
+                type: 'found',
+                title: 'Bunch of 4 Keys with Toyota Fob',
+                category: 'Keys & Remotes',
+                county: 'Nakuru',
+                location: 'Kenyatta Avenue',
+                date: '2026-03-27',
+                description: 'Car keys with black remote and three house keys on a brass ring.',
+                status: 'active',
+                reward: 0,
+                contact: '0700***333',
+                photo: 'https://images.unsplash.com/photo-1582139329536-e7284fece509?w=400&auto=format&fit=crop&q=60'
+            }
+        ];
+
+        let items = JSON.parse(localStorage.getItem('l2f_items')) || SAMPLE_ITEMS;
+        let claims = JSON.parse(localStorage.getItem('l2f_claims')) || [];
+
+        function saveState() {
+            localStorage.setItem('l2f_items', JSON.stringify(items));
+            localStorage.setItem('l2f_claims', JSON.stringify(claims));
+            checkMatches();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateCounties();
+            nav('home');
+            checkMatches();
+            lucide.createIcons();
+        });
+
+        function populateCounties() {
+            const select = document.getElementById('form-county');
+            if(!select) return;
+            select.innerHTML = COUNTIES.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function nav(page) {
+            const container = document.getElementById('main-content');
+            window.scrollTo(0,0);
+
+            if (page === 'home') {
+                container.innerHTML = renderHomeView();
+            } else if (page === 'search') {
+                container.innerHTML = renderSearchView();
+            } else if (page === 'matches') {
+                container.innerHTML = renderMatchesView();
+            } else if (page === 'how') {
+                container.innerHTML = renderHowItWorksView();
+            } else if (page === 'admin') {
+                container.innerHTML = renderAdminView();
+            }
+            lucide.createIcons();
+        }
+
+        function renderHomeView() {
+            const recent = items.slice(0, 6);
+            return `
+                <section class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 md:p-12 mb-8 relative overflow-hidden shadow-xl">
+                    <div class="relative z-10 max-w-2xl">
+                        <span class="inline-block bg-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full font-semibold mb-3 border border-emerald-500/30">
+                            🇰🇪 Nationwide Kenya Lost & Found
+                        </span>
+                        <h1 class="text-3xl md:text-5xl font-black tracking-tight mb-3 leading-tight">
+                            Lost something? <br><span class="text-kenya-green">Found something?</span> <span class="text-kenya-gold">Pata it.</span>
+                        </h1>
+                        <p class="text-slate-300 text-sm md:text-base mb-6 leading-relaxed">
+                            Search and report lost National IDs, passports, phones, wallets, keys, and official documents across all 47 counties.
+                        </p>
+
+                        <div class="bg-white p-2 rounded-2xl shadow-lg flex flex-col md:flex-row gap-2 text-slate-800">
+                            <div class="flex-1 flex items-center gap-2 px-3 py-2 border-b md:border-b-0 md:border-r border-slate-200">
+                                <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+                                <input type="text" id="hero-search-input" placeholder="e.g. ID John Omwamba, Samsung A14" class="w-full text-sm outline-none">
+                            </div>
+                            <button onclick="triggerHeroSearch()" class="bg-kenya-green hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl text-sm transition">
+                                Search Now
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="bg-slate-100 border border-dashed border-slate-300 rounded-xl p-3 mb-8 text-center text-xs text-slate-400">
+                    📢 Advertisement / Partner Slot (Google AdSense Ready)
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-10">
+                    <div onclick="openReportModal('lost')" class="cursor-pointer bg-red-50 border border-red-100 hover:border-red-300 p-5 rounded-2xl flex flex-col items-start transition group shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-red-500 text-white flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i data-lucide="search-x" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base">I Lost Something</h3>
+                        <p class="text-xs text-slate-500 mt-1">Post a report & get instant match notifications.</p>
+                    </div>
+
+                    <div onclick="openReportModal('found')" class="cursor-pointer bg-emerald-50 border border-emerald-100 hover:border-emerald-300 p-5 rounded-2xl flex flex-col items-start transition group shadow-sm">
+                        <div class="w-10 h-10 rounded-xl bg-kenya-green text-white flex items-center justify-center mb-3 group-hover:scale-110 transition">
+                            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base">I Found Something</h3>
+                        <p class="text-xs text-slate-500 mt-1">Help safely return an item to its owner.</p>
+                    </div>
+                </div>
+
+                <section class="mb-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-slate-900 text-lg">Popular Categories</h2>
+                        <button onclick="nav('search')" class="text-xs font-semibold text-kenya-green hover:underline">View All</button>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        ${renderCategoryCard('National IDs', 'file-text', 'National IDs & Passports')}
+                        ${renderCategoryCard('Phones', 'smartphone', 'Phones & Tablets')}
+                        ${renderCategoryCard('Certificates', 'award', 'Certificates & Documents')}
+                        ${renderCategoryCard('Wallets & Bags', 'wallet', 'Wallets & Bags')}
+                    </div>
+                </section>
+
+                <section class="mb-10">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-slate-900 text-lg">Recent Listings</h2>
+                        <button onclick="nav('search')" class="text-xs font-semibold text-kenya-green hover:underline">See All (${items.length})</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        ${recent.map(item => renderItemCard(item)).join('')}
+                    </div>
+                </section>
+            `;
+        }
+
+        function renderCategoryCard(title, icon, categoryName) {
+            return `
+                <div onclick="filterByCategory('${categoryName}')" class="cursor-pointer bg-white border border-slate-200 hover:border-kenya-green p-4 rounded-xl flex items-center gap-3 transition shadow-sm">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="${icon}" class="w-4 h-4"></i>
+                    </div>
+                    <span class="text-xs font-bold text-slate-800">${title}</span>
+                </div>
+            `;
+        }
+
+        function renderItemCard(item) {
+            const isLost = item.type === 'lost';
+            const badgeBg = isLost ? 'bg-red-100 text-red-700 border-red-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+            
+            return `
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <div class="h-36 bg-slate-100 relative overflow-hidden">
+                            <img src="${item.photo || 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=400&auto=format&fit=crop&q=60'}" class="w-full h-full object-cover">
+                            <span class="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${badgeBg}">
+                                ${item.type}
+                            </span>
+                            ${item.reward ? `<span class="absolute top-3 right-3 text-[10px] font-bold bg-amber-400 text-slate-900 px-2 py-0.5 rounded-full shadow">KES ${item.reward} Reward</span>` : ''}
+                        </div>
+                        <div class="p-4">
+                            <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">${item.category}</span>
+                            <h3 class="font-bold text-slate-900 text-sm line-clamp-1 mb-2">${item.title}</h3>
+                            <p class="text-xs text-slate-600 line-clamp-2 mb-3">${item.description}</p>
+                            
+                            <div class="space-y-1 text-xs text-slate-500">
+                                <div class="flex items-center gap-1.5">
+                                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i>
+                                    <span>${item.location}, <strong>${item.county}</strong></span>
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                                    <span>${item.date}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 pt-0 border-t border-slate-100 mt-3 pt-3 flex gap-2">
+                        <button onclick="openClaimModal('${item.id}')" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2 rounded-lg transition">
+                            ${isLost ? 'I Found This' : 'Claim Ownership'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderSearchView() {
+            return `
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-2">Search & Filter Items</h1>
+                    <p class="text-xs text-slate-500">Filter through reports submitted across Kenya.</p>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input type="text" id="search-keyword" oninput="applyFilters()" placeholder="Keyword (e.g. ID number name, color)" class="px-3 py-2 border text-xs rounded-lg outline-none focus:ring-1 focus:ring-kenya-green">
+                    
+                    <select id="search-category" onchange="applyFilters()" class="px-3 py-2 border text-xs rounded-lg outline-none">
+                        <option value="">All Categories</option>
+                        <option value="Phones & Tablets">Phones & Tablets</option>
+                        <option value="National IDs & Passports">IDs & Passports</option>
+                        <option value="Certificates & Documents">Certificates & Documents</option>
+                        <option value="Wallets & Bags">Wallets & Bags</option>
+                        <option value="Keys & Remotes">Keys & Remotes</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Others">Others</option>
+                    </select>
+
+                    <select id="search-county" onchange="applyFilters()" class="px-3 py-2 border text-xs rounded-lg outline-none">
+                        <option value="">All Counties</option>
+                        ${COUNTIES.map(c => `<option value="${c}">${c}</option>`).join('')}
+                    </select>
+
+                    <select id="search-type" onchange="applyFilters()" class="px-3 py-2 border text-xs rounded-lg outline-none">
+                        <option value="">All Status (Lost & Found)</option>
+                        <option value="lost">Lost Only</option>
+                        <option value="found">Found Only</option>
+                    </select>
+                </div>
+
+                <div id="search-results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    ${items.map(item => renderItemCard(item)).join('')}
+                </div>
+            `;
+        }
+
+        function filterByCategory(cat) {
+            nav('search');
+            setTimeout(() => {
+                document.getElementById('search-category').value = cat;
+                applyFilters();
+            }, 50);
+        }
+
+        function triggerHeroSearch() {
+            const query = document.getElementById('hero-search-input').value;
+            nav('search');
+            setTimeout(() => {
+                document.getElementById('search-keyword').value = query;
+                applyFilters();
+            }, 50);
+        }
+
+        function applyFilters() {
+            const keyword = document.getElementById('search-keyword').value.toLowerCase();
+            const category = document.getElementById('search-category').value;
+            const county = document.getElementById('search-county').value;
+            const type = document.getElementById('search-type').value;
+
+            const filtered = items.filter(item => {
+                const matchesKw = !keyword || item.title.toLowerCase().includes(keyword) || item.description.toLowerCase().includes(keyword) || item.location.toLowerCase().includes(keyword);
+                const matchesCat = !category || item.category === category;
+                const matchesCounty = !county || item.county === county;
+                const matchesType = !type || item.type === type;
+                return matchesKw && matchesCat && matchesCounty && matchesType;
+            });
+
+            const grid = document.getElementById('search-results-grid');
+            if(filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400">No matching reports found. Try expanding your search filter.</div>`;
+            } else {
+                grid.innerHTML = filtered.map(item => renderItemCard(item)).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function checkMatches() {
+            const matches = [];
+            const lostItems = items.filter(i => i.type === 'lost');
+            const foundItems = items.filter(i => i.type === 'found');
+
+            lostItems.forEach(lost => {
+                foundItems.forEach(found => {
+                    if (lost.category === found.category && lost.county === found.county) {
+                        const lText = (lost.title + ' ' + lost.description).toLowerCase();
+                        const fText = (found.title + ' ' + found.description).toLowerCase();
+                        let score = 50;
+
+                        if (lost.location.toLowerCase() === found.location.toLowerCase()) score += 25;
+                        if (lText.split(' ').some(w => w.length > 3 && fText.includes(w))) score += 25;
+
+                        if (score >= 50) {
+                            matches.push({ lost, found, score });
+                        }
+                    }
+                });
+            });
+
+            window.currentMatches = matches;
+            
+            const badgeDesktop = document.getElementById('match-badge-desktop');
+            const badgeMobile = document.getElementById('match-badge-mobile');
+            if (matches.length > 0) {
+                if(badgeDesktop) { badgeDesktop.textContent = matches.length; badgeDesktop.classList.remove('hidden'); }
+                if(badgeMobile) { badgeMobile.classList.remove('hidden'); }
+            }
+        }
+
+        function renderMatchesView() {
+            const matches = window.currentMatches || [];
+            return `
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-1">Instant Matches (${matches.length})</h1>
+                    <p class="text-xs text-slate-500">Automated potential pairings based on category, location, and keywords.</p>
+                </div>
+
+                ${matches.length === 0 ? `
+                    <div class="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500">
+                        <i data-lucide="sparkles" class="w-10 h-10 text-slate-300 mx-auto mb-3"></i>
+                        <p class="font-semibold text-sm">No automatic matches detected yet.</p>
+                        <p class="text-xs text-slate-400 mt-1">When new lost or found items pair up, they will appear here.</p>
+                    </div>
+                ` : `
+                    <div class="space-y-4">
+                        ${matches.map(m => `
+                            <div class="bg-white border border-slate-200 rounded-2xl p-4 md:p-6 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                                <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                    <div class="border-l-4 border-red-500 pl-3">
+                                        <span class="text-[10px] font-bold text-red-500 uppercase">Lost Report</span>
+                                        <h4 class="font-bold text-sm text-slate-900">${m.lost.title}</h4>
+                                        <p class="text-xs text-slate-500">${m.lost.location}, ${m.lost.county}</p>
+                                    </div>
+                                    <div class="border-l-4 border-emerald-500 pl-3">
+                                        <span class="text-[10px] font-bold text-emerald-500 uppercase">Found Report</span>
+                                        <h4 class="font-bold text-sm text-slate-900">${m.found.title}</h4>
+                                        <p class="text-xs text-slate-500">${m.found.location}, ${m.found.county}</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end gap-2 w-full md:w-auto border-t md:border-t-0 pt-3 md:pt-0">
+                                    <span class="text-xs font-extrabold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                                        ${m.score}% Confidence Match
+                                    </span>
+                                    <button onclick="openClaimModal('${m.found.id}')" class="w-full md:w-auto bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg">
+                                        Verify & Exchange Contacts
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            `;
+        }
+
+        function renderHowItWorksView() {
+            return `
+                <div class="max-w-2xl mx-auto py-4">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-6 text-center">How Lost2Found Kenya Works</h1>
+                    
+                    <div class="space-y-6">
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-full bg-kenya-green text-white font-bold flex items-center justify-center flex-shrink-0">1</div>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-900">Report in 2 Minutes</h3>
+                                <p class="text-xs text-slate-600 mt-1">Submit lost or found item details, location county, and a photograph. No payment required for basic reporting.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-full bg-kenya-green text-white font-bold flex items-center justify-center flex-shrink-0">2</div>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-900">Automatic Match Engine</h3>
+                                <p class="text-xs text-slate-600 mt-1">Our engine cross-references categories, locations, and descriptions across Kenya to find potential pairs immediately.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-10 h-10 rounded-full bg-kenya-green text-white font-bold flex items-center justify-center flex-shrink-0">3</div>
+                            <div>
+                                <h3 class="font-bold text-base text-slate-900">Safe Verification & Recovery</h3>
+                                <p class="text-xs text-slate-600 mt-1">Owners verify items using private details. Contacts are exchanged safely without exposing phone numbers publicly.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderAdminView() {
+            return `
+                <div class="mb-6">
+                    <h1 class="text-2xl font-bold text-slate-900 mb-1">Admin Dashboard</h1>
+                    <p class="text-xs text-slate-500">Platform oversight, report moderation, and database sync.</p>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white p-4 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-400 block">Total Reports</span>
+                        <span class="text-xl font-black text-slate-900">${items.length}</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-400 block">Lost Items</span>
+                        <span class="text-xl font-black text-red-600">${items.filter(i=>i.type==='lost').length}</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-400 block">Found Items</span>
+                        <span class="text-xl font-black text-emerald-600">${items.filter(i=>i.type==='found').length}</span>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-slate-200">
+                        <span class="text-xs text-slate-400 block">Pending Claims</span>
+                        <span class="text-xl font-black text-amber-600">${claims.length}</span>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                        <h3 class="font-bold text-xs uppercase tracking-wider text-slate-700">Manage Reports</h3>
+                        <button onclick="showSqlSchemaModal()" class="text-xs bg-slate-900 text-white px-3 py-1 rounded">View Supabase SQL Script</button>
+                    </div>
+                    <div class="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                        ${items.map(item => `
+                            <div class="p-3 flex items-center justify-between text-xs">
+                                <div>
+                                    <strong class="text-slate-900">${item.title}</strong>
+                                    <span class="text-slate-400 ml-2">(${item.county})</span>
+                                </div>
+                                <button onclick="deleteItem('${item.id}')" class="text-red-600 hover:text-red-800 font-bold px-2 py-1">
+                                    Delete
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function openReportModal(type) {
+            document.getElementById('form-type').value = type;
+            document.getElementById('modal-title').textContent = type === 'lost' ? 'Report a Lost Item' : 'Report a Found Item';
+            document.getElementById('reward-field').style.display = type === 'lost' ? 'block' : 'none';
+            document.getElementById('report-modal').classList.remove('hidden');
+        }
+
+        function closeReportModal() {
+            document.getElementById('report-modal').classList.add('hidden');
+        }
+
+        function handleReportSubmit(e) {
+            e.preventDefault();
+            const newItem = {
+                id: Date.now().toString(),
+                type: document.getElementById('form-type').value,
+                title: document.getElementById('form-title').value,
+                category: document.getElementById('form-category').value,
+                county: document.getElementById('form-county').value,
+                location: document.getElementById('form-location').value,
+                date: document.getElementById('form-date').value,
+                description: document.getElementById('form-desc').value,
+                reward: document.getElementById('form-reward').value || 0,
+                contact: document.getElementById('form-contact').value,
+                status: 'active',
+                photo: 'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=400&auto=format&fit=crop&q=60'
+            };
+
+            items.unshift(newItem);
+            saveState();
+            closeReportModal();
+            alert('Report submitted successfully! Match engine is checking records...');
+            nav('home');
+        }
+
+        function openClaimModal(itemId) {
+            document.getElementById('claim-item-id').value = itemId;
+            document.getElementById('claim-modal').classList.remove('hidden');
+        }
+
+        function closeClaimModal() {
+            document.getElementById('claim-modal').classList.add('hidden');
+        }
+
+        function handleClaimSubmit(e) {
+            e.preventDefault();
+            const claim = {
+                id: Date.now().toString(),
+                itemId: document.getElementById('claim-item-id').value,
+                name: document.getElementById('claim-name').value,
+                proof: document.getElementById('claim-proof').value,
+                phone: document.getElementById('claim-phone').value,
+                date: new Date().toISOString()
+            };
+
+            claims.push(claim);
+            saveState();
+            closeClaimModal();
+            alert('Claim submitted safely. The reporter has been notified to verify your ownership proof.');
+        }
+
+        function deleteItem(id) {
+            if(confirm('Are you sure you want to delete this listing?')) {
+                items = items.filter(i => i.id !== id);
+                saveState();
+                nav('admin');
+            }
+        }
+
+        function showSqlSchemaModal() {
+            alert(`SUPABASE DATABASE SQL SCHEMA:\n\nCREATE TABLE items (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  type TEXT NOT NULL,\n  title TEXT NOT NULL,\n  category TEXT NOT NULL,\n  county TEXT NOT NULL,\n  location TEXT NOT NULL,\n  description TEXT,\n  contact TEXT NOT NULL,\n  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()\n);\n\nALTER TABLE items ENABLE ROW LEVEL SECURITY;`);
+        }
+    </script>
+</body>
+</html>
